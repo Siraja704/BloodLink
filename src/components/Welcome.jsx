@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const Welcome = () => {
   return (
@@ -7,8 +8,12 @@ const Welcome = () => {
         <h1>Welcome to Blood Donation Platform</h1>
         <p>Join us in saving lives across Pakistan through blood donation</p>
         <div className="cta-buttons">
-          <button className="btn primary">Donate Now</button>
-          <button className="btn secondary">Learn More</button>
+          <Link to="/Register" className="btn primary">
+            Become a Donor
+          </Link>
+          <Link to="/user" className="btn secondary">
+            Find Donors
+          </Link>
         </div>
       </div>
 

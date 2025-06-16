@@ -1,11 +1,18 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  // Handler for Donor link (redirect to register)
+  const handleDonorClick = (e) => {
+    e.preventDefault();
+    navigate("/register");
   };
 
   return (
@@ -24,11 +31,8 @@ const Navigation = () => {
         <Link to="/" className="nav-link">
           Home
         </Link>
-        <Link to="/donor" className="nav-link">
-          Donor
-        </Link>
         <Link to="/user" className="nav-link">
-          User
+          Find Doners
         </Link>
         <Link to="/about" className="nav-link">
           About
@@ -39,8 +43,13 @@ const Navigation = () => {
       </div>
 
       <div className={`nav-auth ${isMenuOpen ? "active" : ""}`}>
-        <button className="btn login">Login</button>
-        <button className="btn register">Register</button>
+        <Link to="/login" className="btn login">
+          Login
+        </Link>
+
+        <Link to="/register" className="btn register">
+          Register
+        </Link>
       </div>
     </nav>
   );
