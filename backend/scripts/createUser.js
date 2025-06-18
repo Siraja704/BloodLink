@@ -4,9 +4,7 @@ require("dotenv").config();
 
 const User = require("../models/User");
 
-const MONGO_URI =
-  process.env.MONGO_URI ||
-  "mongodb+srv://admin:admin@bloodlink.mydq9a7.mongodb.net/BloodLink";
+const MONGO_URI = process.env.MONGO_URI;
 
 async function createUser() {
   await mongoose.connect(MONGO_URI, {
