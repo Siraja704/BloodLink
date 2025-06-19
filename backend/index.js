@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 const authRoutes = require("./routes/auth");
+const donationRoutes = require("./routes/donations");
+const appointmentRoutes = require("./routes/appointments");
 
 const app = express();
 
@@ -26,18 +28,20 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("MongoDB connected"))
+  .then(() => console.log("MongoDB connected to BloodLink database"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // Test route
 app.get("/api/test", (req, res) => {
-  res.json({ message: "API is working and connected to MongoDB!" });
+  res.json({ message: "BloodLink API is working and connected to MongoDB!" });
 });
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/donations", donationRoutes);
+app.use("/api/appointments", appointmentRoutes);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`BloodLink server running on port ${PORT}`);
 });
