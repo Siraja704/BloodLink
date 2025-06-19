@@ -52,6 +52,13 @@ const RegistrationPage = () => {
               if (data.success) {
                 setSuccess(true);
                 setMessage("Registration successful!");
+                // Store user data and token in localStorage
+                localStorage.setItem("user", JSON.stringify(data.user));
+                localStorage.setItem("token", data.token);
+                // Redirect to dashboard after a short delay
+                setTimeout(() => {
+                  window.location.href = "/user";
+                }, 1500);
                 resetForm();
               } else {
                 setMessage(data.message || "Registration failed");

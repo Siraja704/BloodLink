@@ -21,6 +21,13 @@ const LoginPage = () => {
       if (data.success) {
         setSuccess(true);
         setMessage("Login successful!");
+        // Store user data and token in localStorage
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("token", data.token);
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          window.location.href = "/user";
+        }, 1500);
       } else {
         setMessage(data.message || "Login failed");
       }
@@ -31,9 +38,9 @@ const LoginPage = () => {
 
   return (
     <div className="page-container">
-      <div className="donor-section">
-        <h1>Login</h1>
-        <form className="donor-form" onSubmit={handleSubmit}>
+      <div className="auth-section">
+        <h1>Login to BloodLink</h1>
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -41,7 +48,6 @@ const LoginPage = () => {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
               required
             />
           </div>
@@ -52,49 +58,21 @@ const LoginPage = () => {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
               required
             />
           </div>
           <button type="submit" className="btn primary">
             Login
           </button>
-          {message && (
-            <div
-              style={{ color: success ? "green" : "red", marginTop: "1rem" }}
-            >
-              {message}
-            </div>
-          )}
-          <div
-            style={{
-              marginTop: "1rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5rem",
-            }}
-          >
-            <Link
-              to="/forgot-password"
-              style={{
-                color: "#1d3557",
-                textDecoration: "underline",
-                fontSize: "0.95rem",
-              }}
-            >
-              Forgot password?
-            </Link>
-            <span style={{ fontSize: "0.95rem" }}>
-              Don't have an account?{" "}
-              <Link
-                to="/register"
-                style={{ color: "#e63946", textDecoration: "underline" }}
-              >
-                Register
-              </Link>
-            </span>
-          </div>
         </form>
+        {message && (
+          <div className={`message ${success ? "success" : "error"}`}>
+            {message}
+          </div>
+        )}
+        <p className="auth-link">
+          Don't have an account? <Link to="/register">Register here</Link>
+        </p>
       </div>
     </div>
   );
