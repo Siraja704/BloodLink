@@ -8,6 +8,9 @@ import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import LoginPage from "./pages/LoginPage";
 import RegistrationPage from "./pages/RegistrationPage";
+import ScheduleDonationPage from "./pages/ScheduleDonationPage";
+import FindDonorPage from "./pages/FindDonorPage";
+import DonationHistoryPage from "./pages/DonationHistoryPage";
 import "./App.css";
 
 function App() {
@@ -23,6 +26,9 @@ function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegistrationPage />} />
+            <Route path="/schedule" element={<ScheduleDonationPage />} />
+            <Route path="/find-donor" element={<FindDonorPage />} />
+            <Route path="/history" element={<DonationHistoryPage />} />
           </Routes>
         </main>
         <Footer />

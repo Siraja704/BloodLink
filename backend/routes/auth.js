@@ -174,4 +174,18 @@ router.post("/logout", auth, async (req, res) => {
   }
 });
 
+// Get available donors (public or protected)
+router.get("/users/available", auth, async (req, res) => {
+  try {
+    const { bloodType, location } = req.query;
+    const query = { isAvailable: true, isDonor: true, contactPublic: true };
+    if (bloodType) query.bloodType = bloodType;
+    if (location) query.location = { $regex: location, $options: "i" };
+    const users = await User.find(query).select("-password");
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 module.exports = router;

@@ -7,6 +7,19 @@ const UserPage = () => {
   const [donationHistory, setDonationHistory] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    fullName: "",
+    location: "",
+    phone: "",
+    emergencyContact: { name: "", phone: "", relationship: "" },
+    preferences: { notifications: true, emailUpdates: true },
+    contactPublic: false,
+    isPaidDonor: false,
+    chargeAmount: 0,
+    locationCoords: { lat: null, lng: null },
+  });
+  const [profileMsg, setProfileMsg] = useState("");
   const navigate = useNavigate();
 
   const API_BASE = "http://localhost:3000/api";
@@ -88,6 +101,29 @@ const UserPage = () => {
     loadData();
   }, [navigate]);
 
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        fullName: user.fullName || "",
+        location: user.location || "",
+        phone: user.phone || "",
+        emergencyContact: user.emergencyContact || {
+          name: "",
+          phone: "",
+          relationship: "",
+        },
+        preferences: user.preferences || {
+          notifications: true,
+          emailUpdates: true,
+        },
+        contactPublic: user.contactPublic || false,
+        isPaidDonor: user.isPaidDonor || false,
+        chargeAmount: user.chargeAmount || 0,
+        locationCoords: user.locationCoords || { lat: null, lng: null },
+      });
+    }
+  }, [user]);
+
   const handleLogout = async () => {
     try {
       await fetch(`${API_BASE}/auth/logout`, {
@@ -100,6 +136,75 @@ const UserPage = () => {
       localStorage.removeItem("user");
       localStorage.removeItem("token");
       navigate("/login");
+    }
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (name.startsWith("emergencyContact.")) {
+      const field = name.split(".")[1];
+      setProfileForm((prev) => ({
+        ...prev,
+        emergencyContact: { ...prev.emergencyContact, [field]: value },
+      }));
+    } else if (name.startsWith("preferences.")) {
+      const field = name.split(".")[1];
+      setProfileForm((prev) => ({
+        ...prev,
+        preferences: { ...prev.preferences, [field]: checked },
+      }));
+    } else if (type === "checkbox") {
+      setProfileForm((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setProfileForm((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleLocationUpdate = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setProfileForm((prev) => ({
+            ...prev,
+            locationCoords: {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            },
+          }));
+          setProfileMsg("Location updated!");
+        },
+        (err) => {
+          setProfileMsg("Failed to get location: " + err.message);
+        }
+      );
+    } else {
+      setProfileMsg("Geolocation is not supported by your browser.");
+    }
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setProfileMsg("");
+    try {
+      const res = await fetch("http://localhost:3000/api/auth/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(profileForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUser(data.user);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setProfileMsg("Profile updated successfully!");
+        setEditingProfile(false);
+      } else {
+        setProfileMsg(data.message || "Failed to update profile");
+      }
+    } catch (err) {
+      setProfileMsg("Server error");
     }
   };
 
@@ -126,10 +231,33 @@ const UserPage = () => {
       <div className="dashboard-card">
         <h3>Quick Actions</h3>
         <div className="quick-actions">
-          <button className="btn primary">Schedule Donation</button>
-          <button className="btn secondary">Find Donors</button>
-          <button className="btn secondary">Update Profile</button>
-          <button className="btn secondary">View History</button>
+          <button className="btn primary" onClick={() => navigate("/schedule")}>
+            Schedule Donation
+          </button>
+          <button
+            className="btn secondary"
+            onClick={() => navigate("/find-donor")}
+          >
+            Find Donors
+          </button>
+          <button
+            className="btn secondary"
+            onClick={() => setActiveTab("profile")}
+          >
+            Update Profile
+          </button>
+          <button
+            className="btn secondary"
+            onClick={() => navigate("/history")}
+          >
+            View History
+          </button>
+          <button
+            className="btn secondary"
+            onClick={() => navigate("/settings")}
+          >
+            Settings
+          </button>
         </div>
       </div>
 
@@ -174,41 +302,252 @@ const UserPage = () => {
     <div className="profile-section">
       <div className="profile-card">
         <h3>Personal Information</h3>
-        <div className="profile-info">
-          <div className="info-group">
-            <label>Full Name</label>
-            <p>{user?.fullName || "Not provided"}</p>
-          </div>
-          <div className="info-group">
-            <label>Email</label>
-            <p>{user?.email || "Not provided"}</p>
-          </div>
-          <div className="info-group">
-            <label>Blood Type</label>
-            <p>{user?.bloodType || "Not specified"}</p>
-          </div>
-          <div className="info-group">
-            <label>Location</label>
-            <p>{user?.location || "Not provided"}</p>
-          </div>
-          <div className="info-group">
-            <label>Phone</label>
-            <p>{user?.phone || "Not provided"}</p>
-          </div>
-          <div className="info-group">
-            <label>Total Donations</label>
-            <p>{user?.totalDonations || 0}</p>
-          </div>
-          <div className="info-group">
-            <label>Last Donation</label>
-            <p>
-              {user?.lastDonationDate
-                ? new Date(user.lastDonationDate).toLocaleDateString()
-                : "Never"}
-            </p>
-          </div>
-        </div>
-        <button className="btn primary">Edit Profile</button>
+        {!editingProfile ? (
+          <>
+            <div className="profile-info">
+              <div className="info-group">
+                <label>Full Name</label>
+                <p>{user?.fullName || "Not provided"}</p>
+              </div>
+              <div className="info-group">
+                <label>Email</label>
+                <p>{user?.email || "Not provided"}</p>
+              </div>
+              <div className="info-group">
+                <label>Blood Type</label>
+                <p>{user?.bloodType || "Not specified"}</p>
+              </div>
+              <div className="info-group">
+                <label>Location</label>
+                <p>{user?.location || "Not provided"}</p>
+              </div>
+              <div className="info-group">
+                <label>Phone</label>
+                <p>{user?.phone || "Not provided"}</p>
+              </div>
+              <div className="info-group">
+                <label>Total Donations</label>
+                <p>{user?.totalDonations || 0}</p>
+              </div>
+              <div className="info-group">
+                <label>Last Donation</label>
+                <p>
+                  {user?.lastDonationDate
+                    ? new Date(user.lastDonationDate).toLocaleDateString()
+                    : "Never"}
+                </p>
+              </div>
+              <div className="info-group">
+                <label>Emergency Contact</label>
+                <p>
+                  {user?.emergencyContact?.name || "-"}{" "}
+                  {user?.emergencyContact?.phone
+                    ? `(${user.emergencyContact.phone})`
+                    : ""}{" "}
+                  {user?.emergencyContact?.relationship || ""}
+                </p>
+              </div>
+              <div className="info-group">
+                <label>Preferences</label>
+                <p>
+                  Notifications:{" "}
+                  {user?.preferences?.notifications ? "On" : "Off"}, Email
+                  Updates: {user?.preferences?.emailUpdates ? "On" : "Off"}
+                </p>
+              </div>
+              <div className="info-group">
+                <label>Contact Public</label>
+                <p>{user?.contactPublic ? "Yes" : "No"}</p>
+              </div>
+              <div className="info-group">
+                <label>Donor Type</label>
+                <p>
+                  {user?.isPaidDonor ? `Paid ($${user.chargeAmount})` : "Free"}
+                </p>
+              </div>
+              <div className="info-group">
+                <label>Real-Time Location</label>
+                <p>
+                  {user?.locationCoords?.lat && user?.locationCoords?.lng
+                    ? `${user.locationCoords.lat.toFixed(
+                        5
+                      )}, ${user.locationCoords.lng.toFixed(5)}`
+                    : "Not set"}
+                </p>
+              </div>
+            </div>
+            <button
+              className="btn primary"
+              onClick={() => setEditingProfile(true)}
+            >
+              Edit Profile
+            </button>
+            {profileMsg && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  color: profileMsg.includes("success") ? "green" : "red",
+                }}
+              >
+                {profileMsg}
+              </div>
+            )}
+          </>
+        ) : (
+          <form
+            className="profile-edit-form"
+            onSubmit={handleProfileSubmit}
+            style={{ marginTop: "1rem" }}
+          >
+            <div className="form-group">
+              <label>Full Name</label>
+              <input
+                name="fullName"
+                value={profileForm.fullName}
+                onChange={handleProfileChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Location</label>
+              <input
+                name="location"
+                value={profileForm.location}
+                onChange={handleProfileChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Phone</label>
+              <input
+                name="phone"
+                value={profileForm.phone}
+                onChange={handleProfileChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Emergency Contact Name</label>
+              <input
+                name="emergencyContact.name"
+                value={profileForm.emergencyContact?.name || ""}
+                onChange={handleProfileChange}
+              />
+            </div>
+            <div className="form-group">
+              <label>Emergency Contact Phone</label>
+              <input
+                name="emergencyContact.phone"
+                value={profileForm.emergencyContact?.phone || ""}
+                onChange={handleProfileChange}
+              />
+            </div>
+            <div className="form-group">
+              <label>Emergency Contact Relationship</label>
+              <input
+                name="emergencyContact.relationship"
+                value={profileForm.emergencyContact?.relationship || ""}
+                onChange={handleProfileChange}
+              />
+            </div>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  name="preferences.notifications"
+                  checked={!!profileForm.preferences?.notifications}
+                  onChange={handleProfileChange}
+                />{" "}
+                Notifications
+              </label>
+              <label style={{ marginLeft: "1rem" }}>
+                <input
+                  type="checkbox"
+                  name="preferences.emailUpdates"
+                  checked={!!profileForm.preferences?.emailUpdates}
+                  onChange={handleProfileChange}
+                />{" "}
+                Email Updates
+              </label>
+            </div>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  name="contactPublic"
+                  checked={!!profileForm.contactPublic}
+                  onChange={handleProfileChange}
+                />
+                Make my contact info public (allow others to contact me)
+              </label>
+            </div>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  name="isPaidDonor"
+                  checked={!!profileForm.isPaidDonor}
+                  onChange={handleProfileChange}
+                />
+                I want to charge for donation
+              </label>
+              {profileForm.isPaidDonor && (
+                <input
+                  type="number"
+                  name="chargeAmount"
+                  min="0"
+                  value={profileForm.chargeAmount}
+                  onChange={handleProfileChange}
+                  placeholder="Charge Amount ($)"
+                  style={{ marginTop: "0.5rem" }}
+                />
+              )}
+            </div>
+            <div className="form-group">
+              <label>Real-Time Location</label>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+              >
+                <span>
+                  {profileForm.locationCoords.lat &&
+                  profileForm.locationCoords.lng
+                    ? `${profileForm.locationCoords.lat.toFixed(
+                        5
+                      )}, ${profileForm.locationCoords.lng.toFixed(5)}`
+                    : "Not set"}
+                </span>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={handleLocationUpdate}
+                >
+                  Update Location
+                </button>
+              </div>
+            </div>
+            <button className="btn primary" type="submit">
+              Save
+            </button>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => setEditingProfile(false)}
+              style={{ marginLeft: "1rem" }}
+            >
+              Cancel
+            </button>
+            {profileMsg && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  color: profileMsg.includes("success") ? "green" : "red",
+                }}
+              >
+                {profileMsg}
+              </div>
+            )}
+          </form>
+        )}
       </div>
     </div>
   );
