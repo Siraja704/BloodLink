@@ -5,6 +5,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/auth");
 const donationRoutes = require("./routes/donations");
 const appointmentRoutes = require("./routes/appointments");
+const requestRoutes = require("./routes/requests");
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.get("/api/test", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/donations", donationRoutes);
 app.use("/api/appointments", appointmentRoutes);
+app.use("/api/requests", requestRoutes);
 
 // Start server
 app.listen(PORT, () => {

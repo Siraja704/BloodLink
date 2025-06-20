@@ -8,12 +8,45 @@ const auth = require("../middleware/auth");
 // Registration route
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, email, password, bloodType, location, phone } = req.body;
+    const {
+      fullName,
+      email,
+      password,
+      bloodType,
+      location,
+      phone,
+      contactPublic,
+      isPaidDonor,
+      chargeAmount,
+      userType,
+      locationCoords,
+    } = req.body;
 
-    if (!fullName || !email || !password || !bloodType || !location || !phone) {
+    if (!fullName || !email || !password || !location || !phone) {
       return res
         .status(400)
         .json({ success: false, message: "All fields are required" });
+    }
+    if (userType === "donor" && !bloodType) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Blood type is required for donors" });
+    }
+    if (userType === "need" && !bloodType) {
+      return res.status(400).json({
+        success: false,
+        message: "Blood type is required for recipients",
+      });
+    }
+    if (
+      userType === "donor" &&
+      isPaidDonor &&
+      (!chargeAmount || chargeAmount < 1)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Charge amount required for paid donors",
+      });
     }
 
     const existing = await User.findOne({ email });
@@ -24,13 +57,22 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const isDonor = userType === "donor" || userType === "both";
+    const isNeedy = userType === "need" || userType === "both";
+
     const user = new User({
       fullName,
       email,
       password: hashedPassword,
-      bloodType,
+      bloodType: bloodType || undefined,
       location,
       phone,
+      contactPublic: isDonor ? !!contactPublic : false,
+      isPaidDonor: isDonor ? !!isPaidDonor : false,
+      chargeAmount: isDonor && isPaidDonor ? chargeAmount : 0,
+      isDonor,
+      isNeedy,
+      locationCoords: locationCoords || undefined,
     });
 
     await user.save();
@@ -51,6 +93,12 @@ router.post("/register", async (req, res) => {
         bloodType: user.bloodType,
         location: user.location,
         phone: user.phone,
+        contactPublic: user.contactPublic,
+        isPaidDonor: user.isPaidDonor,
+        chargeAmount: user.chargeAmount,
+        isDonor: user.isDonor,
+        isNeedy: user.isNeedy,
+        locationCoords: user.locationCoords,
         totalDonations: user.totalDonations,
         lastDonationDate: user.lastDonationDate,
         isAvailable: user.isAvailable,
@@ -170,6 +218,44 @@ router.post("/logout", auth, async (req, res) => {
     });
   } catch (err) {
     console.error("Logout error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Get available donors (public or protected)
+router.get("/users/available", auth, async (req, res) => {
+  try {
+    const { bloodType, location } = req.query;
+    const query = { isAvailable: true, isDonor: true, contactPublic: true };
+    if (bloodType) query.bloodType = bloodType;
+    if (location) query.location = { $regex: location, $options: "i" };
+    const users = await User.find(query).select("-password");
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Update donor availability status (protected route)
+router.put("/availability", auth, async (req, res) => {
+  try {
+    const { isAvailable } = req.body;
+    if (typeof isAvailable !== "boolean") {
+      return res
+        .status(400)
+        .json({ success: false, message: "isAvailable must be boolean" });
+    }
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { isAvailable },
+      { new: true, runValidators: true }
+    ).select("-password");
+    res.json({
+      success: true,
+      message: "Availability updated",
+      user: updatedUser,
+    });
+  } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });

@@ -21,6 +21,13 @@ const userSchema = new mongoose.Schema(
     lastDonationDate: { type: Date },
     totalDonations: { type: Number, default: 0 },
     isAvailable: { type: Boolean, default: true },
+    contactPublic: { type: Boolean, default: false },
+    isPaidDonor: { type: Boolean, default: false },
+    chargeAmount: { type: Number, default: 0 },
+    locationCoords: {
+      lat: { type: Number },
+      lng: { type: Number },
+    },
     emergencyContact: {
       name: String,
       phone: String,
