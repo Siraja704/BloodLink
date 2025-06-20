@@ -5,7 +5,6 @@ const UserPage = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [donationHistory, setDonationHistory] = useState([]);
-  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -28,6 +27,9 @@ const UserPage = () => {
     requestId: null,
     reason: "",
   });
+
+  const [allRequests, setAllRequests] = useState([]);
+  const [appointments, setAppointments] = useState([]);
 
   const API_BASE = "http://localhost:3000/api";
 
@@ -88,14 +90,28 @@ const UserPage = () => {
     }
   };
 
-  const fetchUpcomingAppointments = async () => {
+  const fetchAllRequests = async () => {
     try {
-      const response = await fetch(`${API_BASE}/appointments/upcoming`, {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:3000/api/requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) setAllRequests(data.requests || []);
+    } catch (err) {}
+  };
+
+  const fetchAppointments = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/appointments/`, {
         headers: getAuthHeaders(),
       });
-      if (response.ok) {
-        const data = await response.json();
-        setUpcomingAppointments(data.appointments || []);
+      if (res.ok) {
+        const data = await res.json();
+        const filtered = (data.appointments || []).filter(
+          (a) => a.donorId === user?._id || a.requesterId === user?._id
+        );
+        setAppointments(filtered);
       }
     } catch (error) {
       console.error("Error fetching appointments:", error);
@@ -116,7 +132,8 @@ const UserPage = () => {
       await Promise.all([
         fetchUserData(),
         fetchDonationHistory(),
-        fetchUpcomingAppointments(),
+        fetchAllRequests(),
+        fetchAppointments(),
         fetchMyRequests(),
       ]);
       setLoading(false);
@@ -276,6 +293,31 @@ const UserPage = () => {
     }
   };
 
+  const handleApply = async (requestId) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/requests/${requestId}/apply`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        alert("Successfully applied!");
+        fetchAllRequests();
+      } else {
+        alert(`Failed to apply: ${data.message}`);
+      }
+    } catch (err) {
+      alert("An error occurred while applying.");
+    }
+  };
+
   const DashboardTab = () => (
     <div className="dashboard-grid">
       <div className="dashboard-card">
@@ -286,7 +328,7 @@ const UserPage = () => {
             <span className="stat-label">Total Donations</span>
           </div>
           <div className="stat-item">
-            <span className="stat-number">{upcomingAppointments.length}</span>
+            <span className="stat-number">{appointments.length}</span>
             <span className="stat-label">Upcoming Appointments</span>
           </div>
           <div className="stat-item">
@@ -299,9 +341,6 @@ const UserPage = () => {
       <div className="dashboard-card">
         <h3>Quick Actions</h3>
         <div className="quick-actions">
-          <button className="btn primary" onClick={() => navigate("/schedule")}>
-            Schedule Donation
-          </button>
           <button
             className="btn secondary"
             onClick={() => navigate("/find-donor")}
@@ -347,17 +386,17 @@ const UserPage = () => {
           ) : (
             <p>No recent donations</p>
           )}
-          {upcomingAppointments.length > 0 && (
+          {appointments.length > 0 && (
             <div className="activity-item">
               <span className="activity-icon">📅</span>
               <div className="activity-content">
                 <p>
                   Appointment scheduled for{" "}
                   {new Date(
-                    upcomingAppointments[0].appointmentDate
+                    appointments[0].appointmentDate
                   ).toLocaleDateString()}
                 </p>
-                <small>{upcomingAppointments[0].appointmentTime}</small>
+                <small>{appointments[0].appointmentTime}</small>
               </div>
             </div>
           )}
@@ -713,10 +752,10 @@ const UserPage = () => {
 
   const AppointmentsTab = () => (
     <div className="appointments-section">
-      <h3>Upcoming Appointments</h3>
+      <h3>Fixed Appointments (Donor & Requester)</h3>
       <div className="appointments-list">
-        {upcomingAppointments.length > 0 ? (
-          upcomingAppointments.map((appointment) => (
+        {appointments.length > 0 ? (
+          appointments.map((appointment) => (
             <div key={appointment._id} className="appointment-item">
               <div className="appointment-date">
                 <span className="date">
@@ -726,26 +765,31 @@ const UserPage = () => {
               </div>
               <div className="appointment-details">
                 <p>
-                  <strong>Type:</strong> {appointment.appointmentType}
+                  <strong>Status:</strong> {appointment.status}
                 </p>
                 <p>
                   <strong>Blood Type:</strong> {appointment.bloodType}
                 </p>
                 <p>
+                  <strong>Hospital:</strong> {appointment.hospital}
+                </p>
+                <p>
                   <strong>Location:</strong> {appointment.location}
                 </p>
                 <p>
-                  <strong>Hospital:</strong> {appointment.hospital}
+                  <strong>Donor:</strong> {appointment.donorId?.fullName} (
+                  {appointment.donorId?.phone})
                 </p>
-              </div>
-              <div className="appointment-actions">
-                <button className="btn secondary">Reschedule</button>
-                <button className="btn danger">Cancel</button>
+                <p>
+                  <strong>Requester:</strong>{" "}
+                  {appointment.requesterId?.fullName} (
+                  {appointment.requesterId?.phone})
+                </p>
               </div>
             </div>
           ))
         ) : (
-          <p>No upcoming appointments</p>
+          <p>No fixed appointments yet.</p>
         )}
       </div>
     </div>
@@ -793,9 +837,27 @@ const UserPage = () => {
                   </p>
                 )}
                 {req.status === "Fulfilled" && req.fulfilledBy && (
-                  <p>
-                    <strong>Fulfilled By:</strong> {req.fulfilledBy.fullName}
-                  </p>
+                  <div className="selected-donor-details">
+                    <h4>Selected Donor Details</h4>
+                    <div>
+                      <strong>Name:</strong> {req.fulfilledBy.fullName}
+                    </div>
+                    <div>
+                      <strong>Blood Type:</strong> {req.fulfilledBy.bloodType}
+                    </div>
+                    <div>
+                      <strong>Address:</strong> {req.fulfilledBy.location}
+                    </div>
+                    <div>
+                      <strong>Phone:</strong> {req.fulfilledBy.phone}
+                    </div>
+                    {req.fulfilledBy.isPaidDonor && (
+                      <div>
+                        <strong>Charges:</strong> $
+                        {req.fulfilledBy.chargeAmount}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -810,11 +872,16 @@ const UserPage = () => {
                             <span>
                               {applicant.fullName} ({applicant.bloodType})
                             </span>
-                            {applicant.isPaidDonor && (
-                              <span className="paid-donor-tag">
-                                ${applicant.chargeAmount} (Paid)
-                              </span>
-                            )}
+                            <span className="paid-donor-tag">
+                              ${applicant.chargeAmount}{" "}
+                              {applicant.isPaidDonor ? "(Paid)" : "(Free)"}
+                            </span>
+                            <div>
+                              <strong>Address:</strong> {applicant.location}
+                            </div>
+                            <div>
+                              <strong>Phone:</strong> {applicant.phone}
+                            </div>
                           </div>
                           <button
                             className="btn-small primary"
@@ -844,6 +911,74 @@ const UserPage = () => {
                   </button>
                 </div>
               )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const AllRequestsTab = () => (
+    <div className="requests-tab">
+      <h2>All Open Blood Requests</h2>
+      <div className="requests-list">
+        {allRequests.length === 0 ? (
+          <p>No open blood requests at the moment.</p>
+        ) : (
+          allRequests.map((req) => (
+            <div key={req._id} className="request-card">
+              <div className="request-card-header">
+                <h3>Patient: {req.patientName}</h3>
+                <span
+                  className={`urgency-tag ${req.urgency
+                    ?.toLowerCase()
+                    .replace(" ", "-")}`}
+                >
+                  {req.urgency}
+                </span>
+              </div>
+              <div className="request-card-body">
+                <p>
+                  <strong>Blood Type:</strong>{" "}
+                  <span className="blood-type-highlight">{req.bloodType}</span>
+                </p>
+                <p>
+                  <strong>Units Required:</strong> {req.unitsRequired}
+                </p>
+                <p>
+                  <strong>Hospital:</strong> {req.hospitalName}
+                </p>
+                <p>
+                  <strong>Address:</strong> {req.hospitalAddress}
+                </p>
+                <p>
+                  <strong>Contact:</strong> {req.contactPerson} at{" "}
+                  {req.contactPhone}
+                </p>
+                <p>
+                  <strong>Requested By:</strong> {req.requesterId?.fullName}
+                </p>
+                {req.notes && (
+                  <p>
+                    <strong>Notes:</strong> {req.notes}
+                  </p>
+                )}
+              </div>
+              <div className="request-card-footer">
+                <small>
+                  Posted on: {new Date(req.createdAt).toLocaleDateString()}
+                </small>
+                {user &&
+                  user._id !== req.requesterId?._id &&
+                  !req.applicants?.some((a) => a._id === user._id) && (
+                    <button
+                      className="btn primary"
+                      onClick={() => handleApply(req._id)}
+                    >
+                      Apply
+                    </button>
+                  )}
+              </div>
             </div>
           ))
         )}
@@ -902,6 +1037,12 @@ const UserPage = () => {
         >
           My Blood Requests
         </button>
+        <button
+          className={`tab ${activeTab === "allrequests" ? "active" : ""}`}
+          onClick={() => setActiveTab("allrequests")}
+        >
+          All Requests
+        </button>
       </div>
 
       <div className="dashboard-content">
@@ -910,6 +1051,7 @@ const UserPage = () => {
         {activeTab === "history" && <HistoryTab />}
         {activeTab === "appointments" && <AppointmentsTab />}
         {activeTab === "requests" && <RequestsTab />}
+        {activeTab === "allrequests" && <AllRequestsTab />}
       </div>
 
       {withdrawModal.isOpen && (

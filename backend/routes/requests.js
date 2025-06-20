@@ -50,12 +50,19 @@ router.post("/", auth, async (req, res) => {
     // Send email to requester (confirmation)
     const requester = await User.findById(req.user._id);
     if (requester && requester.email) {
-      transporter.sendMail({
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-        to: requester.email,
-        subject: "Blood Request Submitted - Confirmation",
-        text: `Dear ${requester.fullName},\n\nYour blood request for ${patientName} (${bloodType}, ${unitsRequired} unit(s)) at ${hospitalName} has been submitted. We will notify available donors.\n\nThank you for using BloodLink!`,
-      });
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to: requester.email,
+          subject: "Blood Request Submitted - Confirmation",
+          text: `Dear ${requester.fullName},\n\nYour blood request for ${patientName} (${bloodType}, ${unitsRequired} unit(s)) at ${hospitalName} has been submitted. We will notify available donors.\n\nThank you for using BloodLink!`,
+        });
+      } catch (emailErr) {
+        console.error(
+          "Failed to send confirmation email to requester:",
+          emailErr
+        );
+      }
     }
 
     // Notify available donors with matching blood type
@@ -67,12 +74,19 @@ router.post("/", auth, async (req, res) => {
 
     for (const donor of availableDonors) {
       if (donor.email) {
-        transporter.sendMail({
-          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-          to: donor.email,
-          subject: `Urgent Blood Request: ${bloodType}`,
-          text: `Dear ${donor.fullName},\n\nAn urgent request for ${bloodType} blood has been made for a patient at ${hospitalName}. If you are able to donate, please check the app for details.\n\nThank you for being a hero!`,
-        });
+        try {
+          await transporter.sendMail({
+            from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+            to: donor.email,
+            subject: `Urgent Blood Request: ${bloodType}`,
+            text: `Dear ${donor.fullName},\n\nAn urgent request for ${bloodType} blood has been made for a patient at ${hospitalName}. If you are able to donate, please check the app for details.\n\nThank you for being a hero!`,
+          });
+        } catch (emailErr) {
+          console.error(
+            `Failed to send notification email to donor ${donor.email}:`,
+            emailErr
+          );
+        }
       }
     }
 
@@ -103,9 +117,12 @@ router.get("/my-requests", auth, async (req, res) => {
     const requests = await BloodRequest.find({ requesterId: req.user._id })
       .populate(
         "applicants",
-        "fullName email bloodType isPaidDonor chargeAmount"
+        "fullName email bloodType isPaidDonor chargeAmount location phone"
       )
-      .populate("fulfilledBy", "fullName email")
+      .populate(
+        "fulfilledBy",
+        "fullName email bloodType isPaidDonor chargeAmount location phone"
+      )
       .sort({ createdAt: -1 });
     res.json({ success: true, requests });
   } catch (err) {
@@ -211,11 +228,10 @@ router.post("/:id/select/:applicantId", auth, async (req, res) => {
 
     // Create appointment for both donor and requester
     const appointmentDate = new Date(); // Default to now, can be updated later
-    const appointment = new Appointment({
+    const appointmentFields = {
       requestId: request._id,
       donorId: applicantId,
       requesterId: request.requesterId,
-      userId: applicantId, // For donor's view
       appointmentDate,
       appointmentTime: "To be scheduled",
       appointmentType: "Blood Donation",
@@ -224,18 +240,24 @@ router.post("/:id/select/:applicantId", auth, async (req, res) => {
       hospital: request.hospitalName,
       status: "Scheduled",
       notes: `Auto-created when donor selected for request ${request._id}`,
+    };
+    // Donor's appointment
+    const donorAppointment = new Appointment({
+      ...appointmentFields,
+      userId: applicantId,
     });
-    await appointment.save();
-
-    // Optionally, create a mirrored appointment for the requester (if needed in UI)
-    // const requesterAppointment = new Appointment({ ... });
-    // await requesterAppointment.save();
+    // Requester's appointment
+    const requesterAppointment = new Appointment({
+      ...appointmentFields,
+      userId: request.requesterId,
+    });
+    await donorAppointment.save();
+    await requesterAppointment.save();
 
     res.json({
       success: true,
-      message: "Applicant selected and appointment created",
+      message: "Applicant selected and appointments created",
       request,
-      appointment,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });

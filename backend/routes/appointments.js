@@ -2,13 +2,18 @@ const express = require("express");
 const router = express.Router();
 const Appointment = require("../models/Appointment");
 const auth = require("../middleware/auth");
+const Donation = require("../models/Donation");
 
 // Get user's appointments
 router.get("/", auth, async (req, res) => {
   try {
-    const appointments = await Appointment.find({ userId: req.user._id }).sort({
-      appointmentDate: 1,
-    });
+    const userId = req.user._id;
+    const appointments = await Appointment.find({
+      $or: [{ donorId: userId }, { requesterId: userId }],
+    })
+      .sort({ appointmentDate: 1 })
+      .populate("donorId", "fullName phone")
+      .populate("requesterId", "fullName phone");
 
     res.json({
       success: true,
@@ -152,11 +157,21 @@ router.patch("/:id/complete", auth, async (req, res) => {
     }
     appointment.status = "Completed";
     await appointment.save();
-    // Increment donor's totalDonations
+    // Increment donor's totalDonations and add to donation history
     if (appointment.donorId) {
       await require("../models/User").findByIdAndUpdate(appointment.donorId, {
         $inc: { totalDonations: 1 },
         lastDonationDate: new Date(),
+      });
+      // Add to donation history
+      await Donation.create({
+        donorId: appointment.donorId,
+        donationDate: new Date(),
+        bloodType: appointment.bloodType,
+        location: appointment.location,
+        hospital: appointment.hospital,
+        status: "Completed",
+        notes: appointment.notes || "",
       });
     }
     res.json({
@@ -164,6 +179,49 @@ router.patch("/:id/complete", auth, async (req, res) => {
       message: "Appointment marked as completed",
       appointment,
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Reschedule appointment
+router.patch("/:id/reschedule", auth, async (req, res) => {
+  try {
+    const { appointmentDate, appointmentTime } = req.body;
+    const appointment = await Appointment.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { appointmentDate, appointmentTime, status: "Scheduled" },
+      { new: true }
+    );
+    if (!appointment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Appointment not found" });
+    }
+    res.json({
+      success: true,
+      message: "Appointment rescheduled",
+      appointment,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Confirm appointment
+router.patch("/:id/confirm", auth, async (req, res) => {
+  try {
+    const appointment = await Appointment.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { status: "Confirmed" },
+      { new: true }
+    );
+    if (!appointment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Appointment not found" });
+    }
+    res.json({ success: true, message: "Appointment confirmed", appointment });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }

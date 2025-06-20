@@ -49,7 +49,7 @@ const CreateRequestPage = () => {
       const data = await res.json();
       if (data.success) {
         setMessage("Blood request created successfully!");
-        setTimeout(() => navigate("/requests"), 2000);
+        setTimeout(() => navigate("/user"), 2000);
       } else {
         setMessage(data.message || "Failed to create request.");
       }
