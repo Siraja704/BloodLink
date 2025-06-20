@@ -479,9 +479,10 @@ body {
   color: var(--primary-color);
 }
 
+.tab:active,
 .tab.active {
   color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
+  border-bottom: 3px solid var(--primary-color);
 }
 
 .dashboard-content {
@@ -1062,4 +1063,77 @@ body {
 }
 .profile-edit-form .btn {
   margin-top: 0.5rem;
+}
+
+/* Request Page Styles */
+.requests-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.request-card {
+  background: var(--white);
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.request-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.request-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.request-card-header h3 {
+  margin: 0;
+  color: var(--primary-color);
+}
+
+.request-card-body p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.request-card-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+  text-align: right;
+  color: #888;
+}
+
+.urgency-tag {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--white);
+}
+
+.urgency-tag.urgent {
+  background-color: #dc3545; /* Red */
+}
+
+.urgency-tag.within-24-hours {
+  background-color: #fd7e14; /* Orange */
+}
+
+.urgency-tag.within-3-days {
+  background-color: #ffc107; /* Yellow */
+  color: #333;
+}
+
+.blood-type-highlight {
+  font-weight: bold;
+  color: var(--primary-color);
 }

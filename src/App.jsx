@@ -11,6 +11,8 @@ import RegistrationPage from "./pages/RegistrationPage";
 import ScheduleDonationPage from "./pages/ScheduleDonationPage";
 import FindDonorPage from "./pages/FindDonorPage";
 import DonationHistoryPage from "./pages/DonationHistoryPage";
+import CreateRequestPage from "./pages/CreateRequestPage";
+import ViewRequestsPage from "./pages/ViewRequestsPage";
 import "./App.css";
 
 function App() {
@@ -29,6 +31,8 @@ function App() {
             <Route path="/schedule" element={<ScheduleDonationPage />} />
             <Route path="/find-donor" element={<FindDonorPage />} />
             <Route path="/history" element={<DonationHistoryPage />} />
+            <Route path="/create-request" element={<CreateRequestPage />} />
+            <Route path="/requests" element={<ViewRequestsPage />} />
           </Routes>
         </main>
         <Footer />

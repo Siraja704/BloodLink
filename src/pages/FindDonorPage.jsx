@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+const defaultPosition = [30.3753, 69.3451]; // Center of Pakistan
 
 const FindDonorPage = () => {
   const [donors, setDonors] = useState([]);
@@ -54,15 +62,6 @@ const FindDonorPage = () => {
     // eslint-disable-next-line
   }, []);
 
-  const handleChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchDonors();
-  };
-
   // Haversine formula for distance in km
   function getDistanceKm(lat1, lng1, lat2, lng2) {
     if (!lat1 || !lng1 || !lat2 || !lng2) return null;
@@ -78,6 +77,31 @@ const FindDonorPage = () => {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
+
+  // Fix default marker icon for leaflet (Vite/React compatible)
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: markerIcon2x,
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+  });
+
+  // Helper to move map to user location
+  function MapCenterer({ position }) {
+    const map = useMap();
+    useEffect(() => {
+      if (position) map.setView(position, 10);
+    }, [position, map]);
+    return null;
+  }
+
+  const handleChange = (e) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchDonors();
+  };
 
   return (
     <div className="page-container">
@@ -119,6 +143,82 @@ const FindDonorPage = () => {
           Search
         </button>
       </form>
+      {/* Map View */}
+      <div
+        style={{
+          width: "100%",
+          height: "350px",
+          marginBottom: "2rem",
+          borderRadius: "8px",
+          overflow: "hidden",
+        }}
+      >
+        <MapContainer
+          center={
+            userLocation
+              ? [userLocation.lat, userLocation.lng]
+              : defaultPosition
+          }
+          zoom={userLocation ? 10 : 6}
+          style={{ width: "100%", height: "100%" }}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {userLocation && (
+            <Marker position={[userLocation.lat, userLocation.lng]}>
+              <Popup>Your Location</Popup>
+            </Marker>
+          )}
+          {donors.map((donor) =>
+            donor.locationCoords?.lat && donor.locationCoords?.lng ? (
+              <Marker
+                key={donor._id}
+                position={[donor.locationCoords.lat, donor.locationCoords.lng]}
+              >
+                <Popup>
+                  <strong>{donor.fullName}</strong>
+                  <br />
+                  Blood Type: {donor.bloodType}
+                  <br />
+                  Type:{" "}
+                  {donor.isPaidDonor ? `Paid ($${donor.chargeAmount})` : "Free"}
+                  <br />
+                  Location: {donor.location}
+                  {userLocation && (
+                    <>
+                      <br />
+                      Distance:{" "}
+                      {getDistanceKm(
+                        userLocation.lat,
+                        userLocation.lng,
+                        donor.locationCoords.lat,
+                        donor.locationCoords.lng
+                      ).toFixed(2)}{" "}
+                      km
+                    </>
+                  )}
+                  {donor.contactPublic && (
+                    <div style={{ marginTop: "0.5rem" }}>
+                      <button className="btn secondary">Contact</button>
+                    </div>
+                  )}
+                </Popup>
+              </Marker>
+            ) : null
+          )}
+          <MapCenterer
+            position={
+              userLocation
+                ? [userLocation.lat, userLocation.lng]
+                : defaultPosition
+            }
+          />
+        </MapContainer>
+      </div>
+      {/* List View */}
       {loading ? (
         <div>Loading...</div>
       ) : (

@@ -375,6 +375,16 @@ const UserPage = () => {
                     : "Not set"}
                 </p>
               </div>
+              <div className="info-group">
+                <label>Availability</label>
+                <p>
+                  {user?.isDonor
+                    ? user?.isAvailable
+                      ? "Available to Donate"
+                      : "Not Available"
+                    : "N/A (Not a donor)"}
+                </p>
+              </div>
             </div>
             <button
               className="btn primary"
@@ -525,6 +535,51 @@ const UserPage = () => {
                 </button>
               </div>
             </div>
+            {user?.isDonor && (
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="isAvailable"
+                    checked={user?.isAvailable}
+                    onChange={async (e) => {
+                      const newValue = e.target.checked;
+                      try {
+                        const res = await fetch(
+                          "http://localhost:3000/api/auth/availability",
+                          {
+                            method: "PUT",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${localStorage.getItem(
+                                "token"
+                              )}`,
+                            },
+                            body: JSON.stringify({ isAvailable: newValue }),
+                          }
+                        );
+                        const data = await res.json();
+                        if (data.success) {
+                          setUser(data.user);
+                          localStorage.setItem(
+                            "user",
+                            JSON.stringify(data.user)
+                          );
+                          setProfileMsg("Availability updated!");
+                        } else {
+                          setProfileMsg(
+                            data.message || "Failed to update availability"
+                          );
+                        }
+                      } catch (err) {
+                        setProfileMsg("Server error");
+                      }
+                    }}
+                  />
+                  Available to Donate
+                </label>
+              </div>
+            )}
             <button className="btn primary" type="submit">
               Save
             </button>
