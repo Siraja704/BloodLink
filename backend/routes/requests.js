@@ -4,6 +4,7 @@ const BloodRequest = require("../models/BloodRequest");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
 const nodemailer = require("nodemailer");
+const Appointment = require("../models/Appointment");
 
 // Configure Nodemailer transporter (update with your real credentials in .env)
 const transporter = nodemailer.createTransport({
@@ -88,6 +89,23 @@ router.get("/", auth, async (req, res) => {
   try {
     const requests = await BloodRequest.find({ status: "Open" })
       .populate("requesterId", "fullName email")
+      .populate("applicants")
+      .sort({ createdAt: -1 });
+    res.json({ success: true, requests });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Get requests for the logged-in user
+router.get("/my-requests", auth, async (req, res) => {
+  try {
+    const requests = await BloodRequest.find({ requesterId: req.user._id })
+      .populate(
+        "applicants",
+        "fullName email bloodType isPaidDonor chargeAmount"
+      )
+      .populate("fulfilledBy", "fullName email")
       .sort({ createdAt: -1 });
     res.json({ success: true, requests });
   } catch (err) {
@@ -98,10 +116,9 @@ router.get("/", auth, async (req, res) => {
 // Get a single blood request by ID
 router.get("/:id", auth, async (req, res) => {
   try {
-    const request = await BloodRequest.findById(req.params.id).populate(
-      "requesterId",
-      "fullName email"
-    );
+    const request = await BloodRequest.findById(req.params.id)
+      .populate("requesterId", "fullName email")
+      .populate("applicants", "fullName email bloodType");
 
     if (!request) {
       return res
@@ -110,6 +127,156 @@ router.get("/:id", auth, async (req, res) => {
     }
 
     res.json({ success: true, request });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Apply to a blood request
+router.post("/:id/apply", auth, async (req, res) => {
+  try {
+    const request = await BloodRequest.findById(req.params.id);
+
+    if (!request) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found" });
+    }
+
+    if (request.status !== "Open") {
+      return res.status(400).json({
+        success: false,
+        message: "Request is not open for applications",
+      });
+    }
+
+    // Check if user has already applied
+    if (request.applicants.includes(req.user._id)) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already applied to this request",
+      });
+    }
+
+    // Check if requester is trying to apply to their own request
+    if (request.requesterId.toString() === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot apply to your own request",
+      });
+    }
+
+    request.applicants.push(req.user._id);
+    await request.save();
+
+    res.json({ success: true, message: "Applied successfully", request });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Select an applicant
+router.post("/:id/select/:applicantId", auth, async (req, res) => {
+  try {
+    const request = await BloodRequest.findById(req.params.id);
+
+    if (!request) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found" });
+    }
+
+    if (request.requesterId.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
+    }
+
+    if (request.status !== "Open") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Request is not open" });
+    }
+
+    const applicantId = req.params.applicantId;
+    if (!request.applicants.includes(applicantId)) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Applicant not found" });
+    }
+
+    request.status = "Fulfilled";
+    request.fulfilledBy = applicantId;
+    await request.save();
+
+    // Create appointment for both donor and requester
+    const appointmentDate = new Date(); // Default to now, can be updated later
+    const appointment = new Appointment({
+      requestId: request._id,
+      donorId: applicantId,
+      requesterId: request.requesterId,
+      userId: applicantId, // For donor's view
+      appointmentDate,
+      appointmentTime: "To be scheduled",
+      appointmentType: "Blood Donation",
+      bloodType: request.bloodType,
+      location: request.hospitalAddress,
+      hospital: request.hospitalName,
+      status: "Scheduled",
+      notes: `Auto-created when donor selected for request ${request._id}`,
+    });
+    await appointment.save();
+
+    // Optionally, create a mirrored appointment for the requester (if needed in UI)
+    // const requesterAppointment = new Appointment({ ... });
+    // await requesterAppointment.save();
+
+    res.json({
+      success: true,
+      message: "Applicant selected and appointment created",
+      request,
+      appointment,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Withdraw a blood request
+router.patch("/:id/withdraw", auth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Withdrawal reason is required" });
+    }
+    const request = await BloodRequest.findById(req.params.id);
+
+    if (!request) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found" });
+    }
+
+    if (request.requesterId.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Not authorized" });
+    }
+
+    if (request.status !== "Open") {
+      return res.status(400).json({
+        success: false,
+        message: "Only open requests can be withdrawn",
+      });
+    }
+
+    request.status = "Withdrawn";
+    request.withdrawalReason = reason;
+    await request.save();
+
+    res.json({ success: true, message: "Request withdrawn", request });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }

@@ -66,9 +66,6 @@ const Navigation = () => {
         <Link to="/contact" className="nav-link">
           Contact
         </Link>
-        <li>
-          <Link to="/requests">Blood Requests</Link>
-        </li>
       </div>
 
       <div className={`nav-auth ${isMenuOpen ? "active" : ""}`}>

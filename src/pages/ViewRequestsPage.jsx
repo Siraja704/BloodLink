@@ -4,8 +4,14 @@ import { Link } from "react-router-dom";
 const ViewRequestsPage = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+
     const fetchRequests = async () => {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -27,6 +33,31 @@ const ViewRequestsPage = () => {
 
     fetchRequests();
   }, []);
+
+  const handleApply = async (requestId) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/requests/${requestId}/apply`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        alert("Successfully applied!");
+        // Optionally, update the UI to show "Applied"
+      } else {
+        alert(`Failed to apply: ${data.message}`);
+      }
+    } catch (err) {
+      alert("An error occurred while applying.");
+    }
+  };
 
   return (
     <div className="page-container">
@@ -71,8 +102,10 @@ const ViewRequestsPage = () => {
                   <strong>Units Required:</strong> {req.unitsRequired}
                 </p>
                 <p>
-                  <strong>Hospital:</strong> {req.hospitalName},{" "}
-                  {req.hospitalAddress}
+                  <strong>Hospital:</strong> {req.hospitalName}
+                </p>
+                <p>
+                  <strong>Address:</strong> {req.hospitalAddress}
                 </p>
                 <p>
                   <strong>Contact:</strong> {req.contactPerson} at{" "}
@@ -91,6 +124,16 @@ const ViewRequestsPage = () => {
                 <small>
                   Posted on: {new Date(req.createdAt).toLocaleDateString()}
                 </small>
+                {user &&
+                  user._id !== req.requesterId._id &&
+                  !req.applicants?.includes(user._id) && (
+                    <button
+                      className="btn primary"
+                      onClick={() => handleApply(req._id)}
+                    >
+                      Apply
+                    </button>
+                  )}
               </div>
             </div>
           ))}

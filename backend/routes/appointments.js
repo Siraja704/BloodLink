@@ -118,7 +118,11 @@ router.get("/upcoming", auth, async (req, res) => {
       userId: req.user._id,
       appointmentDate: { $gte: new Date() },
       status: { $in: ["Scheduled", "Confirmed"] },
-    }).sort({ appointmentDate: 1 });
+    })
+      .sort({ appointmentDate: 1 })
+      .populate("donorId", "fullName phone email")
+      .populate("requesterId", "fullName phone email")
+      .populate("requestId");
 
     res.json({
       success: true,
@@ -126,6 +130,41 @@ router.get("/upcoming", auth, async (req, res) => {
     });
   } catch (err) {
     console.error("Get upcoming appointments error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Mark appointment as completed and increment donor's totalDonations
+router.patch("/:id/complete", auth, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Appointment not found" });
+    }
+    if (appointment.status === "Completed") {
+      return res.json({
+        success: true,
+        message: "Already completed",
+        appointment,
+      });
+    }
+    appointment.status = "Completed";
+    await appointment.save();
+    // Increment donor's totalDonations
+    if (appointment.donorId) {
+      await require("../models/User").findByIdAndUpdate(appointment.donorId, {
+        $inc: { totalDonations: 1 },
+        lastDonationDate: new Date(),
+      });
+    }
+    res.json({
+      success: true,
+      message: "Appointment marked as completed",
+      appointment,
+    });
+  } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });

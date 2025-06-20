@@ -44,8 +44,23 @@ const bloodRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Open", "Fulfilled", "Closed"],
+      enum: ["Open", "Fulfilled", "Closed", "Withdrawn"],
       default: "Open",
+    },
+    fulfilledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    applicants: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    withdrawalReason: {
+      type: String,
+      default: null,
     },
     notes: {
       type: String,

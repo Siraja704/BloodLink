@@ -6,6 +6,7 @@ const UserPage = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [donationHistory, setDonationHistory] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -21,6 +22,12 @@ const UserPage = () => {
   });
   const [profileMsg, setProfileMsg] = useState("");
   const navigate = useNavigate();
+
+  const [withdrawModal, setWithdrawModal] = useState({
+    isOpen: false,
+    requestId: null,
+    reason: "",
+  });
 
   const API_BASE = "http://localhost:3000/api";
 
@@ -48,6 +55,22 @@ const UserPage = () => {
       localStorage.removeItem("user");
       localStorage.removeItem("token");
       navigate("/login");
+    }
+  };
+
+  const fetchMyRequests = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/requests/my-requests`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setMyRequests(data.requests || []);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user's requests:", error);
     }
   };
 
@@ -94,6 +117,7 @@ const UserPage = () => {
         fetchUserData(),
         fetchDonationHistory(),
         fetchUpcomingAppointments(),
+        fetchMyRequests(),
       ]);
       setLoading(false);
     };
@@ -205,6 +229,50 @@ const UserPage = () => {
       }
     } catch (err) {
       setProfileMsg("Server error");
+    }
+  };
+
+  const handleSelectApplicant = async (requestId, applicantId) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/requests/${requestId}/select/${applicantId}`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        fetchMyRequests(); // Refresh the list
+      } else {
+        console.error(data.message);
+      }
+    } catch (err) {
+      console.error("Failed to select applicant", err);
+    }
+  };
+
+  const handleWithdrawRequest = async () => {
+    const { requestId, reason } = withdrawModal;
+    if (!reason) {
+      alert("Please provide a reason for withdrawal.");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/requests/${requestId}/withdraw`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWithdrawModal({ isOpen: false, requestId: null, reason: "" });
+        fetchMyRequests(); // Refresh the list
+      } else {
+        console.error(data.message);
+      }
+    } catch (err) {
+      console.error("Failed to withdraw request", err);
     }
   };
 
@@ -683,6 +751,106 @@ const UserPage = () => {
     </div>
   );
 
+  const RequestsTab = () => (
+    <div className="requests-tab">
+      <h2>My Blood Requests</h2>
+      <button
+        className="btn primary"
+        onClick={() => navigate("/create-request")}
+      >
+        + Create New Request
+      </button>
+      <div className="requests-list">
+        {loading ? (
+          <p>Loading requests...</p>
+        ) : myRequests.length === 0 ? (
+          <p>You have not made any blood requests yet.</p>
+        ) : (
+          myRequests.map((req) => (
+            <div key={req._id} className="request-card-management">
+              <div className="request-card-header">
+                <h3>Patient: {req.patientName}</h3>
+                <span
+                  className={`status-badge status-${req.status.toLowerCase()}`}
+                >
+                  {req.status}
+                </span>
+              </div>
+              <div className="request-card-body">
+                <p>
+                  <strong>Blood Type:</strong>{" "}
+                  <span className="blood-type-highlight">{req.bloodType}</span>
+                </p>
+                <p>
+                  <strong>Hospital:</strong> {req.hospitalName}
+                </p>
+                <p>
+                  <strong>Urgency:</strong> {req.urgency}
+                </p>
+                {req.status === "Withdrawn" && (
+                  <p>
+                    <strong>Reason:</strong> {req.withdrawalReason}
+                  </p>
+                )}
+                {req.status === "Fulfilled" && req.fulfilledBy && (
+                  <p>
+                    <strong>Fulfilled By:</strong> {req.fulfilledBy.fullName}
+                  </p>
+                )}
+              </div>
+
+              {req.status === "Open" && (
+                <div className="applicants-section">
+                  <h4>Applicants ({req.applicants.length})</h4>
+                  {req.applicants.length > 0 ? (
+                    <ul className="applicants-list">
+                      {req.applicants.map((applicant) => (
+                        <li key={applicant._id} className="applicant-item">
+                          <div>
+                            <span>
+                              {applicant.fullName} ({applicant.bloodType})
+                            </span>
+                            {applicant.isPaidDonor && (
+                              <span className="paid-donor-tag">
+                                ${applicant.chargeAmount} (Paid)
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            className="btn-small primary"
+                            onClick={() =>
+                              handleSelectApplicant(req._id, applicant._id)
+                            }
+                          >
+                            Select
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No applicants yet.</p>
+                  )}
+                  <button
+                    className="btn danger"
+                    onClick={() =>
+                      setWithdrawModal({
+                        isOpen: true,
+                        requestId: req._id,
+                        reason: "",
+                      })
+                    }
+                  >
+                    Withdraw Request
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -728,6 +896,12 @@ const UserPage = () => {
         >
           Appointments
         </button>
+        <button
+          className={`tab ${activeTab === "requests" ? "active" : ""}`}
+          onClick={() => setActiveTab("requests")}
+        >
+          My Blood Requests
+        </button>
       </div>
 
       <div className="dashboard-content">
@@ -735,7 +909,45 @@ const UserPage = () => {
         {activeTab === "profile" && <ProfileTab />}
         {activeTab === "history" && <HistoryTab />}
         {activeTab === "appointments" && <AppointmentsTab />}
+        {activeTab === "requests" && <RequestsTab />}
       </div>
+
+      {withdrawModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Withdraw Blood Request</h2>
+            <p>Please provide a reason for withdrawing this request.</p>
+            <textarea
+              value={withdrawModal.reason}
+              onChange={(e) =>
+                setWithdrawModal((prev) => ({
+                  ...prev,
+                  reason: e.target.value,
+                }))
+              }
+              placeholder="e.g., The blood requirement has been met."
+              rows="4"
+            ></textarea>
+            <div className="modal-actions">
+              <button
+                className="btn secondary"
+                onClick={() =>
+                  setWithdrawModal({
+                    isOpen: false,
+                    requestId: null,
+                    reason: "",
+                  })
+                }
+              >
+                Cancel
+              </button>
+              <button className="btn danger" onClick={handleWithdrawRequest}>
+                Confirm Withdrawal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -11,6 +11,7 @@ const ScheduleDonationPage = () => {
   });
   const [message, setMessage] = useState("");
   const [appointments, setAppointments] = useState([]);
+  const [user, setUser] = useState(null);
 
   const API_BASE = "http://localhost:3000/api";
 
@@ -37,6 +38,8 @@ const ScheduleDonationPage = () => {
   };
 
   useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) setUser(JSON.parse(userData));
     fetchAppointments();
   }, []);
 
@@ -70,6 +73,23 @@ const ScheduleDonationPage = () => {
       }
     } catch (err) {
       setMessage("Server error");
+    }
+  };
+
+  const handleComplete = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/appointments/${id}/complete`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAppointments();
+      } else {
+        alert(data.message || "Failed to mark as completed");
+      }
+    } catch (err) {
+      alert("Server error");
     }
   };
 
@@ -156,9 +176,38 @@ const ScheduleDonationPage = () => {
       <h2 style={{ marginTop: "2rem" }}>Upcoming Appointments</h2>
       <ul>
         {appointments.map((a) => (
-          <li key={a._id}>
-            {new Date(a.appointmentDate).toLocaleDateString()}{" "}
-            {a.appointmentTime} at {a.hospital} ({a.location}) - {a.bloodType}
+          <li key={a._id} style={{ marginBottom: "1.5rem" }}>
+            <div>
+              <strong>Date:</strong>{" "}
+              {new Date(a.appointmentDate).toLocaleDateString()}{" "}
+              {a.appointmentTime}
+              <br />
+              <strong>Hospital:</strong> {a.hospital} <br />
+              <strong>Address:</strong> {a.location} <br />
+              <strong>Blood Type:</strong> {a.bloodType} <br />
+              <strong>Status:</strong> {a.status} <br />
+              {a.donorId && user && a.donorId._id !== user._id && (
+                <div>
+                  <strong>Donor:</strong> {a.donorId.fullName} (
+                  {a.donorId.phone})
+                </div>
+              )}
+              {a.requesterId && user && a.requesterId._id !== user._id && (
+                <div>
+                  <strong>Requester:</strong> {a.requesterId.fullName} (
+                  {a.requesterId.phone})
+                </div>
+              )}
+              {a.status !== "Completed" && a.status !== "Cancelled" && (
+                <button
+                  className="btn primary"
+                  onClick={() => handleComplete(a._id)}
+                  style={{ marginTop: "0.5rem" }}
+                >
+                  Mark as Completed
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>
