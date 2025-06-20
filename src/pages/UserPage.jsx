@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Spinner from "../components/Spinner";
 
 const UserPage = () => {
   const [user, setUser] = useState(null);
@@ -210,89 +211,59 @@ const UserPage = () => {
 
   const DashboardTab = () => (
     <div className="dashboard-grid">
-      <div className="dashboard-card">
+      <div className="dashboard-card stat-card welcome-card">
         <h3>Welcome back, {user?.fullName || "User"}!</h3>
-        <div className="user-stats">
-          <div className="stat-item">
-            <span className="stat-number">{user?.totalDonations || 0}</span>
-            <span className="stat-label">Total Donations</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">{upcomingAppointments.length}</span>
-            <span className="stat-label">Upcoming Appointments</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">{user?.bloodType || "N/A"}</span>
-            <span className="stat-label">Blood Type</span>
-          </div>
+        <p>Here's a summary of your activity and stats.</p>
+      </div>
+
+      <div className="dashboard-card stat-card">
+        <span className="stat-icon">🩸</span>
+        <div className="stat-info">
+          <span className="stat-number">{user?.totalDonations || 0}</span>
+          <span className="stat-label">Total Donations</span>
         </div>
       </div>
 
-      <div className="dashboard-card">
+      <div className="dashboard-card stat-card">
+        <span className="stat-icon">📅</span>
+        <div className="stat-info">
+          <span className="stat-number">{upcomingAppointments.length}</span>
+          <span className="stat-label">Upcoming Appointments</span>
+        </div>
+      </div>
+
+      <div className="dashboard-card stat-card">
+        <span className="stat-icon">🅰️</span>
+        <div className="stat-info">
+          <span className="stat-number">{user?.bloodType || "N/A"}</span>
+          <span className="stat-label">Blood Type</span>
+        </div>
+      </div>
+
+      <div className="dashboard-card quick-actions-card">
         <h3>Quick Actions</h3>
         <div className="quick-actions">
           <button className="btn primary" onClick={() => navigate("/schedule")}>
             Schedule Donation
           </button>
           <button
-            className="btn secondary"
-            onClick={() => navigate("/find-donor")}
+            className="btn primary"
+            onClick={() => navigate("/create-request")}
           >
-            Find Donors
+            Create Request
           </button>
           <button
             className="btn secondary"
-            onClick={() => setActiveTab("profile")}
+            onClick={() => navigate("/requests")}
           >
+            View Requests
+          </button>
+          <button className="btn" onClick={() => setActiveTab("profile")}>
             Update Profile
           </button>
-          <button
-            className="btn secondary"
-            onClick={() => navigate("/history")}
-          >
+          <button className="btn" onClick={() => navigate("/history")}>
             View History
           </button>
-          <button
-            className="btn secondary"
-            onClick={() => navigate("/settings")}
-          >
-            Settings
-          </button>
-        </div>
-      </div>
-
-      <div className="dashboard-card">
-        <h3>Recent Activity</h3>
-        <div className="activity-list">
-          {donationHistory.length > 0 ? (
-            <div className="activity-item">
-              <span className="activity-icon">🩸</span>
-              <div className="activity-content">
-                <p>Blood donation completed at {donationHistory[0].hospital}</p>
-                <small>
-                  {new Date(
-                    donationHistory[0].donationDate
-                  ).toLocaleDateString()}
-                </small>
-              </div>
-            </div>
-          ) : (
-            <p>No recent donations</p>
-          )}
-          {upcomingAppointments.length > 0 && (
-            <div className="activity-item">
-              <span className="activity-icon">📅</span>
-              <div className="activity-content">
-                <p>
-                  Appointment scheduled for{" "}
-                  {new Date(
-                    upcomingAppointments[0].appointmentDate
-                  ).toLocaleDateString()}
-                </p>
-                <small>{upcomingAppointments[0].appointmentTime}</small>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -684,7 +655,7 @@ const UserPage = () => {
   );
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <Spinner />;
   }
 
   if (!user) {
@@ -727,6 +698,12 @@ const UserPage = () => {
           onClick={() => setActiveTab("appointments")}
         >
           Appointments
+        </button>
+        <button
+          className={`tab ${activeTab === "requests" ? "active" : ""}`}
+          onClick={() => navigate("/requests")}
+        >
+          Blood Requests
         </button>
       </div>
 

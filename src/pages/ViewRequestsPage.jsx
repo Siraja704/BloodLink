@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import Spinner from "../components/Spinner";
 
 const ViewRequestsPage = () => {
   const [requests, setRequests] = useState([]);
@@ -28,6 +29,10 @@ const ViewRequestsPage = () => {
     fetchRequests();
   }, []);
 
+  if (loading) {
+    return <Spinner />;
+  }
+
   return (
     <div className="page-container">
       <div
@@ -44,9 +49,7 @@ const ViewRequestsPage = () => {
         </Link>
       </div>
 
-      {loading ? (
-        <p>Loading requests...</p>
-      ) : requests.length === 0 ? (
+      {requests.length === 0 ? (
         <p>No open blood requests at the moment.</p>
       ) : (
         <div className="requests-list">

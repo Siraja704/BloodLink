@@ -157,6 +157,7 @@ router.post("/login", async (req, res) => {
         totalDonations: user.totalDonations,
         lastDonationDate: user.lastDonationDate,
         isAvailable: user.isAvailable,
+        role: user.role,
       },
     });
   } catch (err) {

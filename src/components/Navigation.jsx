@@ -66,9 +66,6 @@ const Navigation = () => {
         <Link to="/contact" className="nav-link">
           Contact
         </Link>
-        <li>
-          <Link to="/requests">Blood Requests</Link>
-        </li>
       </div>
 
       <div className={`nav-auth ${isMenuOpen ? "active" : ""}`}>
@@ -147,6 +144,15 @@ const Navigation = () => {
                 >
                   Donation History
                 </Link>
+                {user.role === "admin" && (
+                  <Link
+                    to="/admin"
+                    className="dropdown-item"
+                    onClick={() => setIsProfileOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
                 <Link
                   to="/settings"
                   className="dropdown-item"

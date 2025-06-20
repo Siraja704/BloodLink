@@ -13,6 +13,7 @@ import FindDonorPage from "./pages/FindDonorPage";
 import DonationHistoryPage from "./pages/DonationHistoryPage";
 import CreateRequestPage from "./pages/CreateRequestPage";
 import ViewRequestsPage from "./pages/ViewRequestsPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import "./App.css";
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
             <Route path="/history" element={<DonationHistoryPage />} />
             <Route path="/create-request" element={<CreateRequestPage />} />
             <Route path="/requests" element={<ViewRequestsPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
           </Routes>
         </main>
         <Footer />

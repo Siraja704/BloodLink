@@ -10,7 +10,6 @@ async function createUser() {
   await mongoose.connect(MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    dbName: "BloodLink",
   });
 
   const password = "admin";
@@ -18,11 +17,12 @@ async function createUser() {
 
   const user = new User({
     fullName: "Siraj Ahmed",
-    email: "Siraj1704@icloud.com",
+    email: "siraj1704@hello.com",
     password: hashedPassword,
     bloodType: "A+",
     location: "Sukkur",
     phone: "+92 315 5031961",
+    role: "admin",
   });
 
   try {

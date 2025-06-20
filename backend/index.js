@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth");
 const donationRoutes = require("./routes/donations");
 const appointmentRoutes = require("./routes/appointments");
 const requestRoutes = require("./routes/requests");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/donations", donationRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/requests", requestRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Start server
 app.listen(PORT, () => {

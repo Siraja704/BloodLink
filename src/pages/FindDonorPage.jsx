@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import Spinner from "../components/Spinner";
 
 const defaultPosition = [30.3753, 69.3451]; // Center of Pakistan
 
@@ -105,6 +106,7 @@ const FindDonorPage = () => {
 
   return (
     <div className="page-container">
+      {loading && <Spinner />}
       <h1>Find Donor</h1>
       <form
         className="donor-form"
@@ -219,50 +221,44 @@ const FindDonorPage = () => {
         </MapContainer>
       </div>
       {/* List View */}
-      {loading ? (
-        <div>Loading...</div>
+      {donors.length === 0 && !loading ? (
+        <div>No donors found.</div>
       ) : (
         <div className="donor-cards">
-          {donors.length === 0 ? (
-            <p>No donors found.</p>
-          ) : (
-            donors.map((donor) => {
-              const distance =
-                userLocation &&
-                donor.locationCoords?.lat &&
-                donor.locationCoords?.lng
-                  ? getDistanceKm(
-                      userLocation.lat,
-                      userLocation.lng,
-                      donor.locationCoords.lat,
-                      donor.locationCoords.lng
-                    )
-                  : null;
-              return (
-                <div className="donor-card" key={donor._id}>
-                  <h3>{donor.fullName}</h3>
-                  <p>Blood Type: {donor.bloodType}</p>
-                  <p>Location: {donor.location}</p>
-                  <p>
-                    Last Donation:{" "}
-                    {donor.lastDonationDate
-                      ? new Date(donor.lastDonationDate).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                  <p>
-                    Type:{" "}
-                    {donor.isPaidDonor
-                      ? `Paid ($${donor.chargeAmount})`
-                      : "Free"}
-                  </p>
-                  {distance && <p>Distance: {distance.toFixed(2)} km</p>}
-                  {donor.contactPublic && (
-                    <button className="btn secondary">Contact</button>
-                  )}
-                </div>
-              );
-            })
-          )}
+          {donors.map((donor) => {
+            const distance =
+              userLocation &&
+              donor.locationCoords?.lat &&
+              donor.locationCoords?.lng
+                ? getDistanceKm(
+                    userLocation.lat,
+                    userLocation.lng,
+                    donor.locationCoords.lat,
+                    donor.locationCoords.lng
+                  )
+                : null;
+            return (
+              <div className="donor-card" key={donor._id}>
+                <h3>{donor.fullName}</h3>
+                <p>Blood Type: {donor.bloodType}</p>
+                <p>Location: {donor.location}</p>
+                <p>
+                  Last Donation:{" "}
+                  {donor.lastDonationDate
+                    ? new Date(donor.lastDonationDate).toLocaleDateString()
+                    : "N/A"}
+                </p>
+                <p>
+                  Type:{" "}
+                  {donor.isPaidDonor ? `Paid ($${donor.chargeAmount})` : "Free"}
+                </p>
+                {distance && <p>Distance: {distance.toFixed(2)} km</p>}
+                {donor.contactPublic && (
+                  <button className="btn secondary">Contact</button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
