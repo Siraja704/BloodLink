@@ -343,12 +343,6 @@ const UserPage = () => {
         <div className="quick-actions">
           <button
             className="btn secondary"
-            onClick={() => navigate("/find-donor")}
-          >
-            Find Donors
-          </button>
-          <button
-            className="btn secondary"
             onClick={() => setActiveTab("profile")}
           >
             Update Profile
