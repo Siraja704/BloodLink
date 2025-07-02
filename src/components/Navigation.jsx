@@ -45,7 +45,7 @@ const Navigation = () => {
     <nav className="navbar">
       <div className="nav-brand">
         <Link to="/" className="nav-link">
-          <h1>BloodDonate</h1>
+          <h1>BloodLink</h1>
         </Link>
       </div>
 
